@@ -32,7 +32,6 @@ class TestModuleInterface:
         """Loaded testfile."""
         return load_yaml(interface_file_path)
 
-
     def test_from_dict(self, interface_dict: dict):
         """Dictionary loading should work."""
         assert ModuleInterface(**interface_dict)
@@ -59,7 +58,6 @@ class TestModuleInterface:
         assert ModuleInterface(**interface_dict)
         interface_dict["modelblocks_convention"] = f"v{semver}"
         assert ModuleInterface(**interface_dict)
-
 
     @pytest.fixture
     @staticmethod

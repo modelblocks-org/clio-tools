@@ -22,6 +22,7 @@ SEMVER_REGEX = (
     r"(?:\.[0-9a-zA-Z-]+)*))?$"
 )
 
+
 def _find_between(text: str, brackets: str) -> list[str]:
     """Helper to find text inside different bracket configurations."""
     pattern = rf"{re.escape(brackets[0])}(.*?){re.escape(brackets[1])}"
