@@ -1,4 +1,4 @@
-convention_version: v1.0.0
+convention_version: 1.0.0
 pathvars:
   snakemake_defaults:
     logs:
