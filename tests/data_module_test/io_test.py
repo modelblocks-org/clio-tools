@@ -32,6 +32,10 @@ class TestModuleInterface:
         """Loaded testfile."""
         return load_yaml(interface_file_path)
 
+    only_interface_with_wildcards = pytest.mark.parametrize(
+        "interface_file_path", ["interface_wildcard"], indirect=True
+    )
+
     def test_from_dict(self, interface_dict: dict):
         """Dictionary loading should work."""
         assert ModuleInterface(**interface_dict)
@@ -59,30 +63,27 @@ class TestModuleInterface:
         interface_dict["convention_version"] = f"v{semver}"
         assert ModuleInterface(**interface_dict)
 
-    @pytest.fixture
-    @staticmethod
-    def interface_w_wilcards():
-        """File with wildcards configured."""
-        return load_yaml(Path(__file__).parent / "utils/interface_wildcard.yaml")
-
-    def test_wildcard_section_missing(self, interface_w_wilcards):
+    @only_interface_with_wildcards
+    def test_wildcard_section_missing(self, interface_dict):
         """If filenames specify wildcards, they should appear in the wildcards section."""
-        del interface_w_wilcards["wildcards"]
+        del interface_dict["wildcards"]
         with pytest.raises(
             ValidationError,
             match="Wildcards not specified in 'user_resources' or 'results' pathvars:",
         ):
-            ModuleInterface(**interface_w_wilcards)
+            ModuleInterface(**interface_dict)
 
-    def test_wildcard_not_in_filename(self, interface_w_wilcards):
+    @only_interface_with_wildcards
+    def test_wildcard_not_in_filename(self, interface_dict):
         """All values in the wildcards section should appear in filenames at least once."""
-        interface_w_wilcards["pathvars"]["user_resources"]["text"]["default"] = (
+        interface_dict["pathvars"]["user_resources"]["text"]["default"] = (
             "<resources>/user/no_wildcard.txt"
         )
         with pytest.raises(ValidationError, match="Unused wildcards found"):
-            ModuleInterface(**interface_w_wilcards)
+            ModuleInterface(**interface_dict)
 
-    def test_mermaid_flow_diagram_text(self, interface_w_wilcards):
+    @only_interface_with_wildcards
+    def test_mermaid_flow_diagram_text(self, interface_dict):
         """The generated diagram should be correct and use 4 space indentation."""
         expected = dedent("""\
             ---
@@ -98,7 +99,7 @@ class TestModuleInterface:
                 stuff
                 more_stuff
                 `")""")
-        interface = ModuleInterface(**interface_w_wilcards)
+        interface = ModuleInterface(**interface_dict)
         generated = interface.to_mermaid_flowchart("biomass")
         assert expected == generated
 
