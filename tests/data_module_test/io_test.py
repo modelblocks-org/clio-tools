@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from clio_tools.data_module import ModuleInterface, modular_rulegraph_png
 
 
-def load_yaml(path: Path):
+def load_yaml(path: Path) -> dict:
     """File with no wildcards."""
     return yaml.safe_load(path.read_text())
 
@@ -21,31 +21,49 @@ class TestModuleInterface:
     @pytest.fixture(
         params=["interface_simple", "interface_wildcard", "interface_no_resources"]
     )
-    def path_interface_test(self, request):
-        """Name of the testfile to use."""
+    @staticmethod
+    def interface_file_path(request) -> Path:
+        """Path fixture for all testfiles."""
         return Path(__file__).parent / f"utils/{request.param}.yaml"
 
-    def test_from_dict(self, path_interface_test):
-        """Loading a simple yaml configuration file."""
-        data = load_yaml(path_interface_test)
-        ModuleInterface(**data)
+    @pytest.fixture
+    @staticmethod
+    def interface_dict(interface_file_path: Path) -> dict:
+        """Loaded testfile."""
+        return load_yaml(interface_file_path)
 
-    def test_from_path(self, path_interface_test):
+
+    def test_from_dict(self, interface_dict: dict):
+        """Dictionary loading should work."""
+        assert ModuleInterface(**interface_dict)
+
+    def test_from_path(self, interface_file_path: Path, interface_dict: dict):
         """Loading data from YAML files should result in no alterations."""
-        assert ModuleInterface.from_yaml(path_interface_test) == ModuleInterface(
-            **load_yaml(path_interface_test)
+        assert ModuleInterface.from_yaml(interface_file_path) == ModuleInterface(
+            **interface_dict
         )
 
-    def test_to_mermaid_flowchart(self, path_interface_test):
+    def test_to_mermaid_flowchart(self, interface_dict: dict):
         """Mermaid graph generation should include all file I/O elements."""
-        data = load_yaml(path_interface_test)
-        interface = ModuleInterface(**data)
-        mermaid_txt = interface.to_mermaid_flowchart(path_interface_test.name)
+        interface = ModuleInterface(**interface_dict)
+        mermaid_txt = interface.to_mermaid_flowchart("test")
         assert all([i in mermaid_txt for i in interface.pathvars.user_resources])
         assert all([i in mermaid_txt for i in interface.pathvars.results])
 
+    @pytest.mark.parametrize(
+        "semver", ["0.1.0", "2.0.0", "3.0.0-alpha", "1.0.0-alpha.beta"]
+    )
+    def test_modelblocks_convention_semver(self, semver: str, interface_dict: dict):
+        """Modelblocks convention should accept semver, with or without 'v'."""
+        interface_dict["modelblocks_convention"] = semver
+        assert ModuleInterface(**interface_dict)
+        interface_dict["modelblocks_convention"] = f"v{semver}"
+        assert ModuleInterface(**interface_dict)
+
+
     @pytest.fixture
-    def interface_w_wilcards(self):
+    @staticmethod
+    def interface_w_wilcards():
         """File with wildcards configured."""
         return load_yaml(Path(__file__).parent / "utils/interface_wildcard.yaml")
 
