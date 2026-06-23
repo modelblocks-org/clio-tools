@@ -9,6 +9,19 @@ import networkx as nx
 import yaml
 from pydantic import BaseModel, Field, model_validator
 
+SEMVER_REGEX = (
+    r"^v?"
+    r"(?P<major>0|[1-9]\d*)\."
+    r"(?P<minor>0|[1-9]\d*)\."
+    r"(?P<patch>0|[1-9]\d*)"
+    r"(?:-(?P<prerelease>"
+    r"(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
+    r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*"
+    r"))?"
+    r"(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+"
+    r"(?:\.[0-9a-zA-Z-]+)*))?$"
+)
+
 
 def _find_between(text: str, brackets: str) -> list[str]:
     """Helper to find text inside different bracket configurations."""
@@ -89,6 +102,8 @@ class ModuleInterface(BaseModel):
     "Snakemake pathvars, allowing module input re-wiring."
     wildcards: dict[str, str] = Field(default_factory=dict)
     "Module wildcards. If provided, these must be present in the keys of either module resources or results."
+    convention_version: str = Field(pattern=SEMVER_REGEX)
+    "Modelblocks convention in semantic versioning."
 
     @classmethod
     def from_yaml(cls, path: str | Path):

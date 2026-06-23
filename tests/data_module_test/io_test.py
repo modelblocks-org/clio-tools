@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from clio_tools.data_module import ModuleInterface, modular_rulegraph_png
 
 
-def load_yaml(path: Path):
+def load_yaml(path: Path) -> dict:
     """File with no wildcards."""
     return yaml.safe_load(path.read_text())
 
@@ -21,52 +21,69 @@ class TestModuleInterface:
     @pytest.fixture(
         params=["interface_simple", "interface_wildcard", "interface_no_resources"]
     )
-    def path_interface_test(self, request):
-        """Name of the testfile to use."""
+    @staticmethod
+    def interface_file_path(request) -> Path:
+        """Path fixture for all testfiles."""
         return Path(__file__).parent / f"utils/{request.param}.yaml"
 
-    def test_from_dict(self, path_interface_test):
-        """Loading a simple yaml configuration file."""
-        data = load_yaml(path_interface_test)
-        ModuleInterface(**data)
+    @pytest.fixture
+    @staticmethod
+    def interface_dict(interface_file_path: Path) -> dict:
+        """Loaded testfile."""
+        return load_yaml(interface_file_path)
 
-    def test_from_path(self, path_interface_test):
+    only_interface_with_wildcards = pytest.mark.parametrize(
+        "interface_file_path", ["interface_wildcard"], indirect=True
+    )
+
+    def test_from_dict(self, interface_dict: dict):
+        """Dictionary loading should work."""
+        assert ModuleInterface(**interface_dict)
+
+    def test_from_path(self, interface_file_path: Path, interface_dict: dict):
         """Loading data from YAML files should result in no alterations."""
-        assert ModuleInterface.from_yaml(path_interface_test) == ModuleInterface(
-            **load_yaml(path_interface_test)
+        assert ModuleInterface.from_yaml(interface_file_path) == ModuleInterface(
+            **interface_dict
         )
 
-    def test_to_mermaid_flowchart(self, path_interface_test):
+    def test_to_mermaid_flowchart(self, interface_dict: dict):
         """Mermaid graph generation should include all file I/O elements."""
-        data = load_yaml(path_interface_test)
-        interface = ModuleInterface(**data)
-        mermaid_txt = interface.to_mermaid_flowchart(path_interface_test.name)
+        interface = ModuleInterface(**interface_dict)
+        mermaid_txt = interface.to_mermaid_flowchart("test")
         assert all([i in mermaid_txt for i in interface.pathvars.user_resources])
         assert all([i in mermaid_txt for i in interface.pathvars.results])
 
-    @pytest.fixture
-    def interface_w_wilcards(self):
-        """File with wildcards configured."""
-        return load_yaml(Path(__file__).parent / "utils/interface_wildcard.yaml")
+    @pytest.mark.parametrize(
+        "semver", ["0.1.0", "2.0.0", "3.0.0-alpha", "1.0.0-alpha.beta"]
+    )
+    def test_modelblocks_convention_semver(self, semver: str, interface_dict: dict):
+        """Modelblocks convention should accept semver, with or without 'v'."""
+        interface_dict["convention_version"] = semver
+        assert ModuleInterface(**interface_dict)
+        interface_dict["convention_version"] = f"v{semver}"
+        assert ModuleInterface(**interface_dict)
 
-    def test_wildcard_section_missing(self, interface_w_wilcards):
+    @only_interface_with_wildcards
+    def test_wildcard_section_missing(self, interface_dict):
         """If filenames specify wildcards, they should appear in the wildcards section."""
-        del interface_w_wilcards["wildcards"]
+        del interface_dict["wildcards"]
         with pytest.raises(
             ValidationError,
             match="Wildcards not specified in 'user_resources' or 'results' pathvars:",
         ):
-            ModuleInterface(**interface_w_wilcards)
+            ModuleInterface(**interface_dict)
 
-    def test_wildcard_not_in_filename(self, interface_w_wilcards):
+    @only_interface_with_wildcards
+    def test_wildcard_not_in_filename(self, interface_dict):
         """All values in the wildcards section should appear in filenames at least once."""
-        interface_w_wilcards["pathvars"]["user_resources"]["text"]["default"] = (
+        interface_dict["pathvars"]["user_resources"]["text"]["default"] = (
             "<resources>/user/no_wildcard.txt"
         )
         with pytest.raises(ValidationError, match="Unused wildcards found"):
-            ModuleInterface(**interface_w_wilcards)
+            ModuleInterface(**interface_dict)
 
-    def test_mermaid_flow_diagram_text(self, interface_w_wilcards):
+    @only_interface_with_wildcards
+    def test_mermaid_flow_diagram_text(self, interface_dict):
         """The generated diagram should be correct and use 4 space indentation."""
         expected = dedent("""\
             ---
@@ -82,7 +99,7 @@ class TestModuleInterface:
                 stuff
                 more_stuff
                 `")""")
-        interface = ModuleInterface(**interface_w_wilcards)
+        interface = ModuleInterface(**interface_dict)
         generated = interface.to_mermaid_flowchart("biomass")
         assert expected == generated
 
