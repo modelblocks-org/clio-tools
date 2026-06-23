@@ -102,7 +102,7 @@ class ModuleInterface(BaseModel):
     "Snakemake pathvars, allowing module input re-wiring."
     wildcards: dict[str, str] = Field(default_factory=dict)
     "Module wildcards. If provided, these must be present in the keys of either module resources or results."
-    modelblocks_convention: str = Field(pattern=SEMVER_REGEX)
+    convention_version: str = Field(pattern=SEMVER_REGEX)
     "Modelblocks convention in semantic versioning."
 
     @classmethod

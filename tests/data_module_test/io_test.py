@@ -54,9 +54,9 @@ class TestModuleInterface:
     )
     def test_modelblocks_convention_semver(self, semver: str, interface_dict: dict):
         """Modelblocks convention should accept semver, with or without 'v'."""
-        interface_dict["modelblocks_convention"] = semver
+        interface_dict["convention_version"] = semver
         assert ModuleInterface(**interface_dict)
-        interface_dict["modelblocks_convention"] = f"v{semver}"
+        interface_dict["convention_version"] = f"v{semver}"
         assert ModuleInterface(**interface_dict)
 
     @pytest.fixture

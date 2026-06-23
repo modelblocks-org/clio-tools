@@ -1,4 +1,4 @@
-modelblocks_convention: v1.0.0
+convention_version: v1.0.0
 pathvars:
   snakemake_defaults:
     logs:
